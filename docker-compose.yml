@@ -1,0 +1,49 @@
+# Voyage 本地基础设施：MySQL 8 + Redis 7
+# 启动：docker compose up -d
+# 应用通过环境变量连接（见 README）：
+#   MYSQL_URL / MYSQL_USER / MYSQL_PASSWORD / REDIS_HOST / REDIS_PORT
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: voyage-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: voyage123
+      MYSQL_DATABASE: personalized_travel
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+    ports:
+      - "3306:3306"
+    volumes:
+      - voyage-mysql-data:/var/lib/mysql
+      # 首次启动自动导入建库脚本（容器仅在数据卷为空时执行）
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pvoyage123"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: voyage-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - voyage-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  voyage-mysql-data:
+  voyage-redis-data:

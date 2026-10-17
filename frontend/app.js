@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:8080/api";
+const API_BASE = "http://localhost:8081/api";
 const PLAN_KEY = "voyage.currentPlan";
 
 const interests = ["历史", "美食", "自然", "购物", "休闲", "拍照"];
@@ -61,6 +61,18 @@ const app = {
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
+
+async function getJson(url, defaultValue) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const result = await res.json();
+    return result?.data !== undefined ? result.data : defaultValue;
+  } catch (e) {
+    console.warn(`请求失败 [${url}]:`, e.message);
+    return defaultValue;
+  }
+}
 
 function spot(id, name, district, category, ticketPrice, stayDuration, popularity, tags, isRecoveryNode, physicalLoad, cognitiveLoad, crowdLoad, queueLoad, recoveryValue, description, x, y) {
   return {
@@ -496,6 +508,12 @@ async function initMapDemo() {
   }
 }
 
+function renderMapDemoError(message) {
+  const container = $("#campus-map");
+  if (!container) return;
+  container.innerHTML = `<div class="error-message">${message}</div>`;
+}
+
 async function loadMapStats() {
   const stats = await getJson(`${API_BASE}/map/stats`, null);
   const container = $("#map-stats");
@@ -615,6 +633,77 @@ async function loadFoodRecommendations(state) {
   renderFoodResult(state.foods);
 }
 
+function nodeBounds(nodes) {
+  if (!nodes || !nodes.length) {
+    return { minLng: 0, maxLng: 1, minLat: 0, maxLat: 1, width: 1, height: 1 };
+  }
+  let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+  nodes.forEach((n) => {
+    const lng = Number(n.longitude ?? n.lng ?? 0);
+    const lat = Number(n.latitude ?? n.lat ?? 0);
+    if (lng < minLng) minLng = lng;
+    if (lng > maxLng) maxLng = lng;
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+  });
+  const width = Math.max(maxLng - minLng, 0.001);
+  const height = Math.max(maxLat - minLat, 0.001);
+  return { minLng, maxLng, minLat, maxLat, width, height };
+}
+
+function renderCampusEdge(edge, nodes, bounds, isPath) {
+  const nodeMap = new Map(nodes.map((n) => [Number(n.id), n]));
+  const from = nodeMap.get(Number(edge.fromNodeId ?? edge.from_node_id ?? edge.fromNode ?? edge.from));
+  const to = nodeMap.get(Number(edge.toNodeId ?? edge.to_node_id ?? edge.toNode ?? edge.to));
+  if (!from || !to) return "";
+
+  const padding = 30;
+  const canvasW = 600;
+  const canvasH = 450;
+  const x1 = padding + ((Number(from.longitude ?? from.lng ?? 0) - bounds.minLng) / bounds.width) * (canvasW - 2 * padding);
+  const y1 = canvasH - padding - ((Number(from.latitude ?? from.lat ?? 0) - bounds.minLat) / bounds.height) * (canvasH - 2 * padding);
+  const x2 = padding + ((Number(to.longitude ?? to.lng ?? 0) - bounds.minLng) / bounds.width) * (canvasW - 2 * padding);
+  const y2 = canvasH - padding - ((Number(to.latitude ?? to.lat ?? 0) - bounds.minLat) / bounds.height) * (canvasH - 2 * padding);
+
+  const stroke = isPath ? "#0077cc" : "#b8c4d1";
+  const width = isPath ? 3 : 1;
+  return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${stroke}" stroke-width="${width}" stroke-linecap="round" />`;
+}
+
+function renderCampusNode(node, bounds, isPath, isHighlight) {
+  const padding = 30;
+  const canvasW = 600;
+  const canvasH = 450;
+  const x = padding + ((Number(node.longitude ?? node.lng ?? 0) - bounds.minLng) / bounds.width) * (canvasW - 2 * padding);
+  const y = canvasH - padding - ((Number(node.latitude ?? node.lat ?? 0) - bounds.minLat) / bounds.height) * (canvasH - 2 * padding);
+
+  const nodeType = node.nodeType ?? node.node_type ?? "facility";
+  const isScenic = nodeType === "scenic";
+  const isBuilding = nodeType === "building";
+  const isFacility = nodeType === "facility" || nodeType === "road" || nodeType === "road_node";
+
+  let color = "#7a8b9c";
+  let radius = 3.5;
+  if (isPath) {
+    color = "#0077cc";
+    radius = 6;
+  } else if (isHighlight) {
+    color = "#e07a3c";
+    radius = 5;
+  } else if (isScenic) {
+    color = "#2d6a4f";
+    radius = 4.5;
+  } else if (isBuilding) {
+    color = "#4a6fa5";
+    radius = 4;
+  } else if (isFacility) {
+    color = "#b5838d";
+    radius = 3;
+  }
+
+  return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${radius}" fill="${color}" stroke="#fff" stroke-width="0.8" />`;
+}
+
 function renderCampusMap(state) {
   const container = $("#campus-map");
   if (!container) return;
@@ -632,8 +721,10 @@ function renderCampusMap(state) {
 
   container.innerHTML = `
     <div class="campus-canvas">
-      ${visibleEdges.map((edge) => renderCampusEdge(edge, state.nodes, bounds, pathEdgeIds.has(Number(edge.id)))).join("")}
-      ${state.nodes.map((nodeItem) => renderCampusNode(nodeItem, bounds, pathNodeIds.has(Number(nodeItem.id)), nearbyNodeIds.has(Number(nodeItem.id)) || foodNodeIds.has(Number(nodeItem.id)))).join("")}
+      <svg viewBox="0 0 600 450" preserveAspectRatio="xMidYMid meet" style="width:100%;height:450px;background:#f5f7fa;border-radius:6px;">
+        ${visibleEdges.map((edge) => renderCampusEdge(edge, state.nodes, bounds, pathEdgeIds.has(Number(edge.id)))).join("")}
+        ${state.nodes.map((nodeItem) => renderCampusNode(nodeItem, bounds, pathNodeIds.has(Number(nodeItem.id)), nearbyNodeIds.has(Number(nodeItem.id)) || foodNodeIds.has(Number(nodeItem.id)))).join("")}
+      </svg>
       <div class="map-legend campus-legend">
         <span><i></i>建筑/景点</span>
         <span><i class="facility-dot"></i>服务设施</span>

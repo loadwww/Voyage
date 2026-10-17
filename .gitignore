@@ -35,3 +35,30 @@ desktop.ini
 # Temporary files
 *.tmp
 *.temp
+
+# Java build output
+target/
+*.class
+*.iml
+
+# Packaged archives
+*.zip
+
+# 本机开发脚本与个人材料（不入库）
+/start.ps1
+/setup_maven_env.ps1
+/resume-builder/
+/resume.html
+/*.pdf
+/.trae-html-share-packages/
+/weekly_reports/
+/generate_reports.mjs
+/generate_resume.py
+/.codex_docx_extract_*.txt
+
+# 根目录下与项目无关的学习/面试材料
+/周报*.md
+/*学习指南*.html
+/*面试准备指南*.html
+/*笔试题*.html
+

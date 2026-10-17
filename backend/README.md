@@ -1,43 +1,26 @@
-# Voyage 个性化旅游系统后端
+# Voyage 后端
 
-当前版本先不接数据库，使用内存中的成都主城区核心旅游圈 POI 数据，完成前后端联调所需的接口、字段和节奏控制逻辑。
-
-## 已实现能力
-
-- `POST /api/demand/parse`：解析自然语言需求，输出结构化旅游需求和节奏画像。
-- `GET /api/spots`、`GET /api/spots/{id}`：查询景点与恢复节点。
-- `POST /api/plans/generate`：生成单人动态节奏路线。
-- `POST /api/plans/replan`：根据预算、节奏、删除景点或一键调节动作生成新版本路线。
-- `POST /api/group-plans/generate`：保留群体规划接口。
-- `GET /api/meta`：返回兴趣、城市、类别、节奏类型等前端元数据。
-
-## 本轮核心改造
-
-- 地图范围固定为成都主城区核心旅游圈。
-- `ScenicSpot` 增加行政区、地址、经纬度、门票、停留时长、恢复节点标记、体力/认知/拥挤/排队负担和恢复价值。
-- `Demand` / `DemandRequest` 增加出游节奏、步行接受度、午休偏好、拥挤敏感度、舒适/覆盖偏好。
-- 新增 `RhythmEngineService`，使用 `RELAXED`、`STABLE`、`FATIGUED`、`OVERLOADED` 四态模拟路线推进。
-- `DayPlan` 增加 `nodes`，记录每个节点的到达/离开时间、状态变化、疲劳风险、恢复节点原因和建议停留时间。
-- 重规划接口新增 `adjustmentType`，支持 `lighter`、`moreRecovery`、`lessWalking`、`shortenDay`。
+Spring Boot 3.3 + Java 21 + MySQL 的智能旅行规划服务，分层为 Controller → Service → Repository（JdbcTemplate 手写 SQL + RowMapper），出入参使用 record DTO 与统一 `ApiResponse<T>`。
 
 ## 运行
 
-本机安装 Maven 后，在 `backend` 目录运行：
-
-```bash
-mvn spring-boot:run
+```powershell
+# 数据库连接通过环境变量注入（也可用 docker-compose 起本地 MySQL + Redis）
+$env:MYSQL_PASSWORD="你的密码"
+mvn spring-boot.run
+# 或
+java -jar target/travel-system-0.0.1-SNAPSHOT.jar
 ```
 
-默认地址：
+默认端口 `8081`（可用 `SERVER_PORT` 覆盖）。Redis 为可选依赖：未启动时浏览量计数自动降级为进程内缓冲，定时落库，功能不受影响。
 
-```text
-http://localhost:8080
+- 接口文档：http://localhost:8081/swagger-ui.html
+- 健康检查 / 指标：`/actuator/health`、`/actuator/metrics`
+
+## 测试
+
+```powershell
+mvn test
 ```
 
-## 示例请求
-
-```bash
-curl -X POST http://localhost:8080/api/plans/generate \
-  -H "Content-Type: application/json" \
-  -d "{\"destination\":\"成都\",\"days\":3,\"budget\":1600,\"interests\":[\"历史\",\"美食\",\"拍照\"],\"pace\":\"balanced\",\"walkingTolerance\":\"medium\",\"needNoonRest\":true,\"crowdSensitivity\":\"high\",\"comfortPreference\":\"comfort\"}"
-```
+覆盖 Floyd、TSP 状态压缩 DP、Top-K 优先队列、疲劳度计算、评分并发原子性，以及矩阵缓存只计算一次的契约。
