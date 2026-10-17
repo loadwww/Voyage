@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>智能规划 - Voyage</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-page="planner">
+    <header class="site-header">
+      <a class="brand" href="./index.html"><span>V</span><strong>Voyage</strong></a>
+      <nav class="site-nav">
+        <a href="./planner.html">智能规划</a>
+        <a href="./map.html">地图演示</a>
+        <a href="./diary.html">旅行日记</a>
+        <a href="./result.html">路线总览</a>
+        <a href="./adjust.html">动态调整</a>
+      </nav>
+      <a class="header-action" href="./result.html">看结果</a>
+    </header>
+
+    <main class="app-shell resizable-container" id="resizable-section">
+      <aside class="control-panel left-panel" id="left-panel">
+        <p class="eyebrow">Smart Planner</p>
+        <h1>这趟成都想怎么走？</h1>
+        <p>先输入愿望，再选择旅行风格。右侧地图会预览可能进入路线的景点和休息点。</p>
+
+        <form id="planner-form" class="stack-form">
+          <section class="form-section">
+            <h2>基础需求</h2>
+            <label>
+              旅行愿望
+              <textarea id="rawText" rows="3" placeholder="例如：我想去成都玩 3 天，预算 1600，喜欢历史、美食和拍照，希望不要太累。"></textarea>
+            </label>
+            <div class="form-grid">
+              <label>目的地<input id="destination" type="text" value="成都" /></label>
+              <label>天数<input id="days" type="number" min="1" max="7" value="3" /></label>
+              <label>预算<input id="budget" type="number" min="300" step="100" value="1600" /></label>
+            </div>
+            <div>
+              <span class="field-title">想体验什么</span>
+              <div class="chip-list" id="interest-chips"></div>
+            </div>
+          </section>
+
+          <section class="form-section">
+            <h2>旅行风格</h2>
+            <div class="style-cards segmented" data-group="pace">
+              <button type="button" data-value="relaxed"><span>慢</span><strong>轻松慢游</strong><em>少赶路，多留白</em></button>
+              <button type="button" data-value="balanced" class="active"><span>衡</span><strong>均衡体验</strong><em>景点和休息都照顾</em></button>
+              <button type="button" data-value="compact"><span>多</span><strong>高效打卡</strong><em>想多去几个地方</em></button>
+            </div>
+            <div class="preference-grid">
+              <div>
+                <span class="field-title">步行</span>
+                <div class="mini-options segmented" data-group="walkingTolerance">
+                  <button type="button" data-value="low">少走路</button>
+                  <button type="button" data-value="medium" class="active">适中</button>
+                  <button type="button" data-value="high">能多走</button>
+                </div>
+              </div>
+              <div>
+                <span class="field-title">排队拥挤</span>
+                <div class="mini-options segmented" data-group="crowdSensitivity">
+                  <button type="button" data-value="low">不介意</button>
+                  <button type="button" data-value="medium" class="active">一般</button>
+                  <button type="button" data-value="high">尽量避开</button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <span class="field-title">更想要</span>
+              <div class="mini-options two segmented" data-group="comfortPreference">
+                <button type="button" data-value="comfort" class="active">玩得舒服</button>
+                <button type="button" data-value="coverage">多玩几个</button>
+              </div>
+            </div>
+            <label class="rest-toggle">
+              <input id="needNoonRest" type="checkbox" checked />
+              <span><strong>帮我留一个午间休息</strong><em>适合茶馆、咖啡或公园短暂停留</em></span>
+            </label>
+          </section>
+
+          <section class="form-section">
+            <h2>特别需求</h2>
+            <label>额外说明<input id="constraints" type="text" placeholder="例如：晚上安排美食街，尽量少排队，想去茶馆休息" /></label>
+          </section>
+
+          <div class="form-actions">
+            <button type="button" class="secondary-btn" id="load-demo">填入示例</button>
+            <button type="button" class="secondary-btn" id="parse-demand">从愿望中提取</button>
+            <button type="submit" class="primary-btn">生成路线</button>
+          </div>
+        </form>
+      </aside>
+
+      <!-- 拖动分割线 -->
+      <div class="resizer" id="resizer">
+        <div class="resizer-handle"></div>
+      </div>
+
+      <section class="map-workspace right-panel" id="right-panel">
+        <div class="map-toolbar">
+          <div>
+            <p class="eyebrow">Map Workspace</p>
+            <h2>成都主城区旅行地图</h2>
+          </div>
+          <span>景点与休息点联动预览</span>
+        </div>
+        <div class="map-panel large" id="planner-map"></div>
+        <div class="floating-results">
+          <h3>可能进入路线</h3>
+          <ul id="planner-preview-list"></ul>
+        </div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

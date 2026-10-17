@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>方案总览 - Voyage</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-page="result">
+    <header class="site-header">
+      <a class="brand" href="./index.html"><span>V</span><strong>Voyage</strong></a>
+      <nav class="site-nav">
+        <a href="./planner.html">智能规划</a>
+        <a href="./map.html">地图演示</a>
+        <a href="./diary.html">旅行日记</a>
+        <a href="./result.html">路线总览</a>
+        <a href="./adjust.html">动态调整</a>
+      </nav>
+      <a class="header-action" href="./adjust.html">调整路线</a>
+    </header>
+
+    <main class="result-layout">
+      <section class="result-main">
+        <div id="result-summary"></div>
+        <div class="map-panel result-map" id="result-map"></div>
+        <section>
+          <div class="section-mini-head">
+            <h2>每日怎么玩</h2>
+            <a class="secondary-link" href="./adjust.html">觉得太赶？去调整</a>
+          </div>
+          <div class="day-list" id="result-days"></div>
+        </section>
+      </section>
+      <aside class="result-side" id="result-insights"></aside>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: travel-system
+  datasource:
+    url: ${MYSQL_URL:jdbc:mysql://localhost:3306/personalized_travel?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+logging:
+  level:
+    com.example.travel: info

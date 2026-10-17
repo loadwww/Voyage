@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>旅行日记 - Voyage</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-page="diary">
+    <header class="site-header">
+      <a class="brand" href="./index.html"><span>V</span><strong>Voyage</strong></a>
+      <nav class="site-nav">
+        <a href="./planner.html">智能规划</a>
+        <a href="./map.html">地图演示</a>
+        <a href="./diary.html">旅行日记</a>
+        <a href="./result.html">路线总览</a>
+        <a href="./adjust.html">动态调整</a>
+      </nav>
+      <a class="header-action" href="./planner.html">去规划</a>
+    </header>
+
+    <main class="diary-layout">
+      <aside class="control-panel diary-panel">
+        <p class="eyebrow">Travel Diary</p>
+        <h1>旅行日记管理</h1>
+        <p>记录旅行内容，也可以按热度、评分和兴趣检索推荐。</p>
+
+        <section class="form-section">
+          <h2>日记统计</h2>
+          <div class="map-stat-grid" id="diary-stats"></div>
+        </section>
+
+        <section class="form-section">
+          <h2>搜索与排序</h2>
+          <label>目的地<input id="diary-destination" type="text" placeholder="成都 / 明德大学002校区" /></label>
+          <label>关键词<input id="diary-keyword" type="text" placeholder="茶馆、洗手间、路线、食堂" /></label>
+          <div class="form-grid two">
+            <label>
+              精确标题
+              <input id="diary-exact-title" type="text" placeholder="完整输入日记标题" />
+            </label>
+            <label>
+              全文检索
+              <input id="diary-fulltext-keyword" type="text" placeholder="搜索正文、标签、标题" />
+            </label>
+          </div>
+          <div class="form-grid two">
+            <label>
+              排序
+              <select id="diary-sort">
+                <option value="hot">热度优先</option>
+                <option value="rating">评分优先</option>
+                <option value="new">最新发布</option>
+              </select>
+            </label>
+            <label>
+              兴趣推荐
+              <select id="diary-interest">
+                <option value="历史">历史</option>
+                <option value="美食">美食</option>
+                <option value="休闲">休闲</option>
+                <option value="校园">校园</option>
+                <option value="导航">导航</option>
+              </select>
+            </label>
+          </div>
+          <div class="quick-actions large">
+            <button type="button" id="diary-search">查询日记</button>
+            <button type="button" id="diary-recommend">推荐日记</button>
+            <button type="button" id="diary-title-search">标题精确查</button>
+            <button type="button" id="diary-fulltext-search">全文检索</button>
+          </div>
+        </section>
+
+        <section class="form-section aigc-generator">
+          <h2>照片生成动画</h2>
+          <p class="muted-text">上传或粘贴景点/校园照片，生成旅行短片预览。</p>
+          <label>
+            照片地址
+            <input id="aigc-image-url" type="text" value="https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=900&q=80" />
+          </label>
+          <label>
+            本地照片
+            <input id="aigc-image-file" type="file" accept="image/*" />
+          </label>
+          <div class="form-grid two">
+            <label>地点<input id="aigc-place" value="成都人民公园" /></label>
+            <label>风格<input id="aigc-style" value="慢游、茶馆、休息点" /></label>
+          </div>
+          <button class="primary-btn" type="button" id="aigc-generate">生成旅行动画</button>
+        </section>
+
+        <section class="form-section">
+          <h2>写一篇日记</h2>
+          <form id="diary-form" class="stack-form">
+            <label>标题<input id="diary-title" required value="我的成都慢游记录" /></label>
+            <div class="form-grid two">
+              <label>目的地<input id="diary-form-destination" required value="成都" /></label>
+              <label>作者<input id="diary-author" value="游客" /></label>
+            </div>
+            <label>兴趣标签<input id="diary-tags" value="历史,美食,休闲" /></label>
+            <label>图片地址<input id="diary-image" placeholder="可选" /></label>
+            <label>正文<textarea id="diary-content" rows="5" required>今天的路线没有一味赶景点，中午安排了茶馆休息，下午再去街区慢慢逛，整体节奏舒服很多。</textarea></label>
+            <button class="primary-btn" type="submit">保存日记</button>
+          </form>
+        </section>
+      </aside>
+
+      <section class="diary-main">
+        <div class="map-toolbar">
+          <div>
+            <p class="eyebrow">Browse & Search</p>
+            <h2>所有用户的旅行记录</h2>
+          </div>
+          <span>浏览会增加热度，评分会影响推荐排序</span>
+        </div>
+        <div class="diary-grid" id="diary-list"></div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

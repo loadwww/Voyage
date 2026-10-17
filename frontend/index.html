@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voyage 成都旅行规划</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-page="home">
+    <header class="site-header">
+      <a class="brand" href="./index.html" aria-label="Voyage 首页">
+        <span>V</span>
+        <strong>Voyage</strong>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="./planner.html">智能规划</a>
+        <a href="./map.html">地图演示</a>
+        <a href="./diary.html">旅行日记</a>
+        <a href="./result.html">路线总览</a>
+        <a href="./adjust.html">动态调整</a>
+      </nav>
+      <a class="header-action" href="./planner.html">开始规划</a>
+    </header>
+
+    <main>
+      <section class="hero landing-hero">
+        <div class="hero-media" aria-hidden="true"></div>
+        <div class="hero-content">
+          <p class="eyebrow">Chengdu Travel Companion</p>
+          <h1>帮你规划一条不那么累的成都路线</h1>
+          <p>根据兴趣、预算和体力节奏安排景点与中途休息点。系统会在行程偏赶时主动帮你放慢一点。</p>
+          <div class="hero-actions">
+            <a class="primary-link" href="./planner.html">规划我的路线</a>
+            <a class="ghost-link" href="./map.html">校园/景区地图</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="feature-strip">
+        <article>
+          <strong>地图主导</strong>
+          <span>路线、休息点和每日安排会落在同一张成都旅行地图上。</span>
+        </article>
+        <article>
+          <strong>会安排休息</strong>
+          <span>茶馆、公园、咖啡带会作为中途缓冲点，和景点一起进入路线。</span>
+        </article>
+        <article>
+          <strong>持续调整</strong>
+          <span>觉得太赶时，可以一键改轻松、减少步行或删掉某个地点。</span>
+        </article>
+      </section>
+
+      <section class="section split-showcase">
+        <div>
+          <p class="eyebrow">Product Preview</p>
+          <h2>像地图产品一样规划，但更在意这一天会不会太累</h2>
+          <p>首页只负责建立期待。真正的搜索、地图和路线联动会进入规划页；结果页会先告诉你怎么玩，再解释为什么这样安排。</p>
+          <a class="secondary-link" href="./planner.html">进入智能规划页</a>
+        </div>
+        <div class="map-panel" id="home-map"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <strong>Voyage</strong>
+      <span>让路线好玩，也让旅途有喘息的空间。</span>
+    </footer>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

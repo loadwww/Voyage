@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>校园/景区地图演示 - Voyage</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-page="map">
+    <header class="site-header">
+      <a class="brand" href="./index.html"><span>V</span><strong>Voyage</strong></a>
+      <nav class="site-nav">
+        <a href="./planner.html">智能规划</a>
+        <a href="./map.html">地图演示</a>
+        <a href="./diary.html">旅行日记</a>
+        <a href="./result.html">路线总览</a>
+        <a href="./adjust.html">动态调整</a>
+      </nav>
+      <a class="header-action" href="./planner.html">返回规划</a>
+    </header>
+
+    <main class="map-demo-layout">
+      <aside class="control-panel map-demo-panel">
+        <p class="eyebrow">Campus & Scenic Map</p>
+        <h1>校园/景区内部导航演示</h1>
+        <p>用内部道路图演示最短路径、多点参观、交通工具约束、室内导航和美食推荐，方便线下验收时直接说明核心算法。</p>
+
+        <section class="form-section">
+          <h2>数据规模</h2>
+          <div class="map-stat-grid" id="map-stats"></div>
+        </section>
+
+        <section class="form-section">
+          <h2>选择区域</h2>
+          <label>
+            景区或校园
+            <select id="map-area-select"></select>
+          </label>
+        </section>
+
+        <section class="form-section">
+          <h2>景区/校园推荐</h2>
+          <div class="form-grid two">
+            <label>
+              类型
+              <select id="area-recommend-type">
+                <option value="all">全部</option>
+                <option value="scenic">景区</option>
+                <option value="campus">校园</option>
+              </select>
+            </label>
+            <label>
+              排序
+              <select id="area-recommend-sort">
+                <option value="hot">热度优先</option>
+                <option value="rating">评分优先</option>
+                <option value="match">兴趣匹配</option>
+              </select>
+            </label>
+          </div>
+          <div class="form-grid two">
+            <label>
+              兴趣
+              <input id="area-recommend-interest" type="text" placeholder="历史 / 美食 / 校园 / 休闲" />
+            </label>
+            <label>
+              关键词
+              <input id="area-recommend-keyword" type="text" placeholder="输入景区、学校或城市" />
+            </label>
+          </div>
+          <button class="primary-btn" type="button" id="area-recommend-search">推荐前 10 个区域</button>
+        </section>
+
+        <section class="form-section">
+          <h2>单目标路线规划</h2>
+          <div class="form-grid two">
+            <label>
+              当前位置
+              <select id="map-from-node"></select>
+            </label>
+            <label>
+              目标地点
+              <select id="map-to-node"></select>
+            </label>
+          </div>
+          <div class="quick-actions large">
+            <button type="button" id="path-distance">距离最短</button>
+            <button type="button" id="path-time">时间最短</button>
+            <button type="button" id="path-transport">交通工具最快</button>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h2>多点参观并返回</h2>
+          <label>
+            多个目标点 ID，用英文逗号分隔
+            <input id="map-target-nodes" type="text" placeholder="例如：5,12,20" />
+          </label>
+          <div class="quick-actions large">
+            <button type="button" id="multi-distance">多点距离最短</button>
+            <button type="button" id="multi-time">多点时间最短</button>
+            <button type="button" id="multi-transport">多点交通最快</button>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h2>美食推荐</h2>
+          <div class="form-grid two">
+            <label>
+              菜系
+              <select id="food-cuisine">
+                <option value="">全部菜系</option>
+                <option value="川菜">川菜</option>
+                <option value="火锅">火锅</option>
+                <option value="小吃">小吃</option>
+                <option value="粤菜">粤菜</option>
+                <option value="面食">面食</option>
+                <option value="轻食">轻食</option>
+                <option value="轻食咖啡">轻食咖啡</option>
+              </select>
+            </label>
+            <label>
+              排序
+              <select id="food-sort">
+                <option value="hot">热度优先</option>
+                <option value="rating">评价优先</option>
+                <option value="distance">距离优先</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            模糊查询
+            <input id="food-keyword" type="text" placeholder="输入美食名、菜系、饭店或窗口名" />
+          </label>
+          <button class="primary-btn" type="button" id="food-search">推荐前 10 个美食</button>
+        </section>
+
+        <section class="form-section">
+          <h2>室内导航模拟</h2>
+          <label>
+            建筑物
+            <select id="indoor-building-node"></select>
+          </label>
+          <div class="form-grid two">
+            <label>
+              起点房间
+              <input id="indoor-from-room" type="text" value="入口" />
+            </label>
+            <label>
+              目标房间
+              <input id="indoor-to-room" type="text" value="305" />
+            </label>
+          </div>
+          <button class="primary-btn" type="button" id="indoor-search">生成室内导航</button>
+        </section>
+
+        <section class="form-section">
+          <h2>附近设施</h2>
+          <div class="form-grid two">
+            <label>
+              类别
+              <select id="facility-category">
+                <option value="all">全部设施</option>
+                <option value="洗手间">洗手间</option>
+                <option value="食堂">食堂</option>
+                <option value="咖啡馆">咖啡馆</option>
+                <option value="超市">超市</option>
+                <option value="图书馆">图书馆</option>
+                <option value="商店">商店</option>
+                <option value="饭店">饭店</option>
+                <option value="医务室">医务室</option>
+                <option value="停车场">停车场</option>
+                <option value="便利店">便利店</option>
+              </select>
+            </label>
+            <label>
+              数量
+              <input id="facility-limit" type="number" min="1" max="20" value="10" />
+            </label>
+          </div>
+          <div class="form-grid two">
+            <label>
+              类别关键词
+              <input id="facility-category-keyword" type="text" placeholder="可输入商店、饭店、图书馆等" />
+            </label>
+            <label>
+              查询范围（米）
+              <input id="facility-radius" type="number" min="50" max="5000" value="800" />
+            </label>
+          </div>
+          <button class="primary-btn" type="button" id="nearby-search">查附近设施</button>
+        </section>
+      </aside>
+
+      <section class="map-demo-main">
+        <div class="map-toolbar">
+          <div>
+            <p class="eyebrow">Road Graph</p>
+            <h2 id="map-demo-title">内部道路图</h2>
+          </div>
+          <span id="map-demo-subtitle">节点与道路会同步展示</span>
+        </div>
+        <div class="map-panel map-demo-map" id="campus-map"></div>
+        <div class="map-demo-results">
+          <article class="insight-card">
+            <h3>路线结果</h3>
+            <div id="path-result" class="map-result-list"></div>
+          </article>
+          <article class="insight-card">
+            <h3>景区/校园 Top 10</h3>
+            <div id="area-recommend-result" class="map-result-list"></div>
+          </article>
+          <article class="insight-card">
+            <h3>多点/室内说明</h3>
+            <div id="advanced-path-result" class="map-result-list"></div>
+          </article>
+          <article class="insight-card">
+            <h3>美食 Top 10</h3>
+            <div id="food-result" class="map-result-list"></div>
+          </article>
+          <article class="insight-card">
+            <h3>附近设施</h3>
+            <div id="nearby-result" class="map-result-list"></div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

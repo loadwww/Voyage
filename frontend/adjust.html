@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>动态调整 - Voyage</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body data-page="adjust">
+    <header class="site-header">
+      <a class="brand" href="./index.html"><span>V</span><strong>Voyage</strong></a>
+      <nav class="site-nav">
+        <a href="./planner.html">智能规划</a>
+        <a href="./map.html">地图演示</a>
+        <a href="./diary.html">旅行日记</a>
+        <a href="./result.html">路线总览</a>
+        <a href="./adjust.html">动态调整</a>
+      </nav>
+      <a class="header-action" href="./result.html">返回路线</a>
+    </header>
+
+    <main class="app-shell">
+      <aside class="control-panel">
+        <div id="adjust-summary"></div>
+        <form id="adjust-form" class="stack-form"></form>
+      </aside>
+      <section class="map-workspace">
+        <div class="map-toolbar">
+          <div>
+            <p class="eyebrow">Live Adjust</p>
+            <h2>调整后的路线仍会保留休息点</h2>
+          </div>
+          <span>地图与路线同步更新</span>
+        </div>
+        <div class="map-panel large" id="adjust-map"></div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
