@@ -37,7 +37,7 @@ public class SpotRepository {
      */
     private volatile int[][] travelMinutes = new int[0][0];
     /**
-     * Floyd 全源最短路结果：O(n^3) 只在启动时计算一次，不再每请求重算。
+     * Floyd 全源最短路结果：O(n^3) 只在启动时计算一次，请求期直接复用。
      */
     private volatile int[][] shortestDistances = new int[0][0];
 
@@ -96,8 +96,8 @@ public class SpotRepository {
 
     /**
      * 原始通行时间矩阵（启动时一次性构建，只读共享，禁止修改）。
-     * 原先每次调用都深拷贝整个 O(n^2) 矩阵，属于每请求的无谓开销；
-     * 唯一消费方 FloydShortestPath 内部会自行 clone，故直接返回不可变引用。
+     * 返回共享引用而非深拷贝，避免每请求 O(n^2) 复制开销；
+     * 唯一消费方 FloydShortestPath 内部会自行 clone，不触碰原始矩阵。
      */
     public int[][] travelMinutes() {
         return travelMinutes;

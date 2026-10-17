@@ -49,6 +49,8 @@ target/
 /setup_maven_env.ps1
 /resume-builder/
 /resume.html
+/resume_voyage_project.md
+/interview_qa_voyage.md
 /*.pdf
 /.trae-html-share-packages/
 /weekly_reports/

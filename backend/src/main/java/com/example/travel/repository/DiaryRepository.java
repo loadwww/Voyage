@@ -142,9 +142,11 @@ public class DiaryRepository {
     }
 
     /**
-     * 原子评分更新（修复原先“读-改-写”在并发下的丢更新问题）。
+     * 原子评分更新：单条 UPDATE 同时完成加权平均与计数递增。
+     * <p>设计考虑：并发评分下"先 SELECT 再 UPDATE"的读-改-写两步会互相覆盖（丢失更新），
+     * 因此直接用一条原子 UPDATE，整条语句在 InnoDB 行锁内完成，等价于一次 CAS。
      * <p>关键：MySQL 的 SET 子句从左到右求值，rating 必须写在 rating_count 之前，
-     * 否则新评分会用到已自增的 count。整条语句在 InnoDB 行锁内完成，等价于一次 CAS。
+     * 否则新评分会用到已自增的 count。
      *
      * @return 受影响行数，0 表示日记不存在
      */

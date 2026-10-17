@@ -32,7 +32,7 @@ public class DiaryController {
         this.diaryService = diaryService;
     }
 
-    @Operation(summary = "日记列表", description = "兼容旧版 limit（返回数组）；传入 page 时返回分页对象 PageResult")
+    @Operation(summary = "日记列表", description = "返回形态由参数决定：默认返回数组（limit 取条数）；传入 page 时返回分页对象 PageResult")
     @GetMapping
     public ApiResponse<?> list(
             @RequestParam(required = false) String destination,
