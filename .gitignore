@@ -56,9 +56,9 @@ target/
 /generate_resume.py
 /.codex_docx_extract_*.txt
 
-# 根目录下与项目无关的学习/面试材料
+# 根目录下与项目无关的学习/面试材料（HTML）
+/*.html
+
+# 中文命名的周报与杂项
 /周报*.md
-/*学习指南*.html
-/*面试准备指南*.html
-/*笔试题*.html
 
