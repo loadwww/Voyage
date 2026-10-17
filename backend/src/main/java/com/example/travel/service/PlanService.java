@@ -1,7 +1,6 @@
 package com.example.travel.service;
 
 import com.example.travel.algorithm.FatigueCalculator;
-import com.example.travel.algorithm.FloydShortestPath;
 import com.example.travel.algorithm.TspDpPlanner;
 import com.example.travel.model.DayPlan;
 import com.example.travel.model.Demand;
@@ -20,7 +19,6 @@ public class PlanService {
     private final SpotRepository spotRepository;
     private final RecallService recallService;
     private final RhythmEngineService rhythmEngineService;
-    private final FloydShortestPath floyd = new FloydShortestPath();
     private final TspDpPlanner tsp = new TspDpPlanner();
     private final FatigueCalculator fatigueCalculator = new FatigueCalculator();
 
@@ -38,7 +36,8 @@ public class PlanService {
         Demand normalized = demand.normalize();
         List<ScoredSpot> selected = recallService.recall(normalized, mustSpotId, removeSpotId);
         selected = applyBudgetLimit(selected, normalized, mustSpotId);
-        int[][] dist = floyd.shortestDistances(spotRepository.travelMinutes());
+        // Floyd 全源最短路矩阵在启动时已预计算缓存，直接复用，避免每请求 O(n^3) 重算
+        int[][] dist = spotRepository.shortestDistances();
         List<DayPlan> days = splitIntoDays(selected, normalized, dist);
         int totalTicket = selected.stream().mapToInt(item -> item.spot().ticketPrice()).sum();
         int transportCost = days.stream().mapToInt(day -> (int) Math.round(day.travelMinutes() * transportCostRate(normalized))).sum();

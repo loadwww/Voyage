@@ -1,14 +1,53 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8081}
 
 spring:
   application:
     name: travel-system
   datasource:
-    url: ${MYSQL_URL:jdbc:mysql://localhost:3306/personalized_travel?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    url: ${MYSQL_URL:jdbc:mysql://localhost:3306/personalized_travel?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
     username: ${MYSQL_USER:root}
     password: ${MYSQL_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  # Redis 用于浏览量计数缓冲；Redis 不可用时应用仍可正常启动并自动降级为进程内计数
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 500ms
+
+# 可观测性：健康检查、指标（缓存命中率 / 接口耗时）
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,caches
+  endpoint:
+    health:
+      show-details: when_authorized
+  health:
+    # Redis 为可选依赖（不可用时自动降级为进程内计数），不应拖垮健康检查
+    redis:
+      enabled: false
+  metrics:
+    tags:
+      application: travel-system
+
+# OpenAPI 文档：/swagger-ui.html
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+# 业务调参
+voyage:
+  cache:
+    graph:
+      ttl-minutes: ${GRAPH_CACHE_TTL_MINUTES:10}
+      max-size: ${GRAPH_CACHE_MAX_SIZE:200}
+  view-count:
+    # 浏览量批量落库间隔（毫秒）
+    flush-interval-ms: ${VIEW_FLUSH_INTERVAL_MS:15000}
 
 logging:
   level:

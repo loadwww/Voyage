@@ -1,5 +1,6 @@
 package com.example.travel.repository;
 
+import com.example.travel.algorithm.FloydShortestPath;
 import com.example.travel.model.ScenicSpot;
 import jakarta.annotation.PostConstruct;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -24,12 +25,21 @@ public class SpotRepository {
             "https://images.unsplash.com/photo-1530789253388-582c481c54b0?auto=format&fit=crop&w=900&q=80";
 
     private final JdbcTemplate jdbcTemplate;
+    private final FloydShortestPath floyd = new FloydShortestPath();
     private final List<ScenicSpot> spots = new ArrayList<>();
     private final Map<Integer, ScenicSpot> byId = new HashMap<>();
     private final Map<String, List<ScenicSpot>> byCity = new HashMap<>();
     private final Map<String, List<ScenicSpot>> byCategory = new HashMap<>();
     private final Map<String, List<ScenicSpot>> byTag = new HashMap<>();
-    private int[][] travelMinutes = new int[0][0];
+    /**
+     * 景点静态数据：启动时加载一次，全应用共享。
+     * volatile 保证初始化完成后对其他线程的可见性（安全发布）。
+     */
+    private volatile int[][] travelMinutes = new int[0][0];
+    /**
+     * Floyd 全源最短路结果：O(n^3) 只在启动时计算一次，不再每请求重算。
+     */
+    private volatile int[][] shortestDistances = new int[0][0];
 
     public SpotRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
@@ -37,15 +47,18 @@ public class SpotRepository {
 
     @PostConstruct
     public void init() {
-        spots.clear();
-        byId.clear();
-        byCity.clear();
-        byCategory.clear();
-        byTag.clear();
+        synchronized (this) {
+            spots.clear();
+            byId.clear();
+            byCity.clear();
+            byCategory.clear();
+            byTag.clear();
 
-        spots.addAll(loadSpotsFromDatabase());
-        indexSpots();
-        travelMinutes = loadTravelMinutesFromDatabase();
+            spots.addAll(loadSpotsFromDatabase());
+            indexSpots();
+            travelMinutes = loadTravelMinutesFromDatabase();
+            shortestDistances = floyd.shortestDistances(travelMinutes);
+        }
     }
 
     public List<ScenicSpot> findAll() {
@@ -81,12 +94,20 @@ public class SpotRepository {
         return byCategory.keySet().stream().sorted().toList();
     }
 
+    /**
+     * 原始通行时间矩阵（启动时一次性构建，只读共享，禁止修改）。
+     * 原先每次调用都深拷贝整个 O(n^2) 矩阵，属于每请求的无谓开销；
+     * 唯一消费方 FloydShortestPath 内部会自行 clone，故直接返回不可变引用。
+     */
     public int[][] travelMinutes() {
-        int[][] copy = new int[travelMinutes.length][];
-        for (int i = 0; i < travelMinutes.length; i++) {
-            copy[i] = travelMinutes[i].clone();
-        }
-        return copy;
+        return travelMinutes;
+    }
+
+    /**
+     * Floyd 全源最短路矩阵（启动时预计算一次并缓存，只读共享，禁止修改）。
+     */
+    public int[][] shortestDistances() {
+        return shortestDistances;
     }
 
     public Set<ScenicSpot> recallByTags(String city, List<String> tags) {

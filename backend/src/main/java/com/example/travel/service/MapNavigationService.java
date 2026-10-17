@@ -9,6 +9,7 @@ import com.example.travel.model.MapNode;
 import com.example.travel.model.MapPath;
 import com.example.travel.model.MapPathStep;
 import com.example.travel.model.MultiStopPath;
+import com.example.travel.model.NavGraph;
 import com.example.travel.model.NearbyFacility;
 import com.example.travel.repository.MapRepository;
 import org.springframework.stereotype.Service;
@@ -31,20 +32,22 @@ public class MapNavigationService {
     private static final int MAX_MULTI_TARGETS = 8;
 
     private final MapRepository mapRepository;
+    private final GraphCacheService graphCacheService;
 
-    public MapNavigationService(MapRepository mapRepository) {
+    public MapNavigationService(MapRepository mapRepository, GraphCacheService graphCacheService) {
         this.mapRepository = mapRepository;
+        this.graphCacheService = graphCacheService;
     }
 
     public MapPath shortestPath(long areaId, long fromNodeId, long toNodeId, String strategy) {
-        Graph graph = loadGraph(areaId);
+        NavGraph graph = graphCacheService.getGraph(areaId);
         ensureNodeInArea(graph, fromNodeId);
         ensureNodeInArea(graph, toNodeId);
         return buildPath(graph, fromNodeId, toNodeId, normalizeStrategy(strategy));
     }
 
     public MultiStopPath multiStopPath(long areaId, long startNodeId, List<Long> targetNodeIds, String strategy) {
-        Graph graph = loadGraph(areaId);
+        NavGraph graph = graphCacheService.getGraph(areaId);
         ensureNodeInArea(graph, startNodeId);
 
         String normalizedStrategy = normalizeStrategy(strategy);
@@ -114,9 +117,9 @@ public class MapNavigationService {
     }
 
     public IndoorPath indoorPath(long areaId, long buildingNodeId, String fromRoom, String toRoom) {
-        Graph graph = loadGraph(areaId);
+        NavGraph graph = graphCacheService.getGraph(areaId);
         ensureNodeInArea(graph, buildingNodeId);
-        MapNode building = graph.nodes.get(buildingNodeId);
+        MapNode building = graph.nodes().get(buildingNodeId);
         int fromFloor = clampFloor(parseFloor(fromRoom), building.floorCount());
         int toFloor = clampFloor(parseFloor(toRoom), building.floorCount());
 
@@ -136,7 +139,7 @@ public class MapNavigationService {
     }
 
     public List<NearbyFacility> nearbyFacilities(long areaId, long fromNodeId, String category, int limit, double radiusMeters) {
-        Graph graph = loadGraph(areaId);
+        NavGraph graph = graphCacheService.getGraph(areaId);
         ensureNodeInArea(graph, fromNodeId);
         SearchResult distanceResult = dijkstra(graph, fromNodeId, "distance");
         SearchResult timeResult = dijkstra(graph, fromNodeId, "time");
@@ -144,7 +147,7 @@ public class MapNavigationService {
         int safeLimit = Math.max(1, Math.min(limit <= 0 ? 10 : limit, 50));
         double safeRadius = radiusMeters <= 0 ? Double.MAX_VALUE : radiusMeters;
         String categoryQuery = normalizeText(category);
-        return graph.nodes.values().stream()
+        return graph.nodes().values().stream()
                 .filter(node -> "facility".equals(node.nodeType()))
                 .filter(node -> categoryQuery.isBlank()
                         || "all".equals(categoryQuery)
@@ -194,7 +197,7 @@ public class MapNavigationService {
             String sort,
             int limit
     ) {
-        Graph graph = loadGraph(areaId);
+        NavGraph graph = graphCacheService.getGraph(areaId);
         ensureNodeInArea(graph, fromNodeId);
         SearchResult distanceResult = dijkstra(graph, fromNodeId, "distance");
         SearchResult timeResult = dijkstra(graph, fromNodeId, "time");
@@ -202,7 +205,7 @@ public class MapNavigationService {
         PriorityQueue<FoodRecommendation> topK = new PriorityQueue<>(bestFirst.reversed());
         int safeLimit = Math.max(1, Math.min(limit <= 0 ? 10 : limit, 30));
 
-        for (MapNode node : graph.nodes.values()) {
+        for (MapNode node : graph.nodes().values()) {
             if (!isFoodFacility(node) || !distanceResult.distance.containsKey(node.id())) {
                 continue;
             }
@@ -283,17 +286,17 @@ public class MapNavigationService {
         return "Top-K 按热度维护前 10 个候选";
     }
 
-    private MapPath buildPath(Graph graph, long fromNodeId, long toNodeId, String strategy) {
+    private MapPath buildPath(NavGraph graph, long fromNodeId, long toNodeId, String strategy) {
         SearchResult result = dijkstra(graph, fromNodeId, strategy);
         if (!result.distance.containsKey(toNodeId)) {
             throw new IllegalArgumentException("Target node is unreachable.");
         }
         List<Long> nodeIds = restoreNodeIds(fromNodeId, toNodeId, result.previousNode);
-        List<MapNode> pathNodes = nodeIds.stream().map(graph.nodes::get).toList();
-        List<MapEdge> pathEdges = restoreEdges(nodeIds, result.previousEdge, graph.edgeById);
+        List<MapNode> pathNodes = nodeIds.stream().map(graph.nodes()::get).toList();
+        List<MapEdge> pathEdges = restoreEdges(nodeIds, result.previousEdge, graph.edgeById());
         List<MapPathStep> pathSteps = buildSteps(graph, nodeIds, pathEdges, strategy);
         return new MapPath(
-                graph.area.id(),
+                graph.area().id(),
                 fromNodeId,
                 toNodeId,
                 strategy,
@@ -548,27 +551,7 @@ public class MapNavigationService {
         return previous[target.length()];
     }
 
-    private Graph loadGraph(long areaId) {
-        MapArea area = mapRepository.area(areaId);
-        List<MapNode> nodes = mapRepository.nodes(areaId, null, null);
-        List<MapEdge> edges = mapRepository.edges(areaId);
-        Map<Long, MapNode> nodeMap = new HashMap<>();
-        for (MapNode node : nodes) {
-            nodeMap.put(node.id(), node);
-        }
-        Map<Long, MapEdge> edgeById = new HashMap<>();
-        Map<Long, List<Step>> adjacency = new HashMap<>();
-        for (MapEdge edge : edges) {
-            edgeById.put(edge.id(), edge);
-            adjacency.computeIfAbsent(edge.fromNodeId(), ignored -> new ArrayList<>()).add(new Step(edge.toNodeId(), edge));
-            if (edge.bidirectional()) {
-                adjacency.computeIfAbsent(edge.toNodeId(), ignored -> new ArrayList<>()).add(new Step(edge.fromNodeId(), edge));
-            }
-        }
-        return new Graph(area, nodeMap, edgeById, adjacency);
-    }
-
-    private SearchResult dijkstra(Graph graph, long startNodeId, String strategy) {
+    private SearchResult dijkstra(NavGraph graph, long startNodeId, String strategy) {
         Map<Long, Double> distance = new HashMap<>();
         Map<Long, Long> previousNode = new HashMap<>();
         Map<Long, Long> previousEdge = new HashMap<>();
@@ -582,8 +565,8 @@ public class MapNavigationService {
             if (!visited.add(current.nodeId())) {
                 continue;
             }
-            for (Step step : graph.adjacency.getOrDefault(current.nodeId(), List.of())) {
-                double nextDistance = current.distance() + edgeWeight(graph.area.areaType(), step.edge(), strategy);
+            for (NavGraph.Step step : graph.adjacency().getOrDefault(current.nodeId(), List.of())) {
+                double nextDistance = current.distance() + edgeWeight(graph.area().areaType(), step.edge(), strategy);
                 double known = distance.getOrDefault(step.toNodeId(), Double.MAX_VALUE);
                 if (nextDistance < known) {
                     distance.put(step.toNodeId(), nextDistance);
@@ -596,13 +579,13 @@ public class MapNavigationService {
         return new SearchResult(distance, previousNode, previousEdge);
     }
 
-    private List<MapPathStep> buildSteps(Graph graph, List<Long> nodeIds, List<MapEdge> edges, String strategy) {
+    private List<MapPathStep> buildSteps(NavGraph graph, List<Long> nodeIds, List<MapEdge> edges, String strategy) {
         List<MapPathStep> steps = new ArrayList<>();
         for (int i = 0; i < edges.size(); i += 1) {
             MapEdge edge = edges.get(i);
-            MapNode from = graph.nodes.get(nodeIds.get(i));
-            MapNode to = graph.nodes.get(nodeIds.get(i + 1));
-            TransportChoice choice = chooseTransport(graph.area.areaType(), edge, strategy);
+            MapNode from = graph.nodes().get(nodeIds.get(i));
+            MapNode to = graph.nodes().get(nodeIds.get(i + 1));
+            TransportChoice choice = chooseTransport(graph.area().areaType(), edge, strategy);
             steps.add(new MapPathStep(
                     from.id(),
                     to.id(),
@@ -711,8 +694,8 @@ public class MapNavigationService {
         return edges;
     }
 
-    private void ensureNodeInArea(Graph graph, long nodeId) {
-        if (!graph.nodes.containsKey(nodeId)) {
+    private void ensureNodeInArea(NavGraph graph, long nodeId) {
+        if (!graph.nodes().containsKey(nodeId)) {
             throw new IllegalArgumentException("Node does not exist in current area: " + nodeId);
         }
     }
@@ -749,12 +732,6 @@ public class MapNavigationService {
 
     private double round(double value) {
         return Math.round(value * 100.0) / 100.0;
-    }
-
-    private record Graph(MapArea area, Map<Long, MapNode> nodes, Map<Long, MapEdge> edgeById, Map<Long, List<Step>> adjacency) {
-    }
-
-    private record Step(long toNodeId, MapEdge edge) {
     }
 
     private record State(long nodeId, double distance) {
