@@ -2,6 +2,7 @@ package com.example.travel.repository;
 
 import com.example.travel.dto.DiaryRequest;
 import com.example.travel.model.DiaryStats;
+import com.example.travel.model.PageResult;
 import com.example.travel.model.TravelDiary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -14,6 +15,11 @@ import java.util.Locale;
 
 @Repository
 public class DiaryRepository {
+    private static final String COLUMNS = """
+            id, title, destination, author_name, content, image_url, video_url, interest_tags,
+            view_count, rating, rating_count, compressed_content, create_time
+            """;
+
     private final JdbcTemplate jdbcTemplate;
 
     public DiaryRepository(JdbcTemplate jdbcTemplate) {
@@ -21,28 +27,37 @@ public class DiaryRepository {
     }
 
     public List<TravelDiary> list(String destination, String keyword, String sort, int limit) {
-        List<Object> args = new ArrayList<>();
-        StringBuilder sql = new StringBuilder("""
-                SELECT id, title, destination, author_name, content, image_url, video_url, interest_tags,
-                       view_count, rating, rating_count, compressed_content, create_time
-                FROM travel_diary
-                WHERE 1 = 1
-                """);
-        if (destination != null && !destination.isBlank()) {
-            sql.append(" AND destination LIKE ?");
-            args.add("%" + destination.trim() + "%");
-        }
-        if (keyword != null && !keyword.isBlank()) {
-            sql.append(" AND (title LIKE ? OR content LIKE ? OR interest_tags LIKE ?)");
-            String like = "%" + keyword.trim() + "%";
-            args.add(like);
-            args.add(like);
-            args.add(like);
-        }
-        sql.append(orderBy(sort));
-        sql.append(" LIMIT ?");
-        args.add(Math.max(1, Math.min(limit <= 0 ? 20 : limit, 100)));
-        return jdbcTemplate.query(sql.toString(), this::mapDiary, args.toArray());
+        SqlWhere where = SqlWhere.filter(destination, keyword);
+        String sql = "SELECT " + COLUMNS + " FROM travel_diary " + where.clause() + orderBy(sort) + " LIMIT ?";
+        List<Object> args = new ArrayList<>(where.args());
+        args.add(safeLimit(limit));
+        return jdbcTemplate.query(sql, this::mapDiary, args.toArray());
+    }
+
+    /**
+     * 分页查询日记（offset 分页）。
+     */
+    public PageResult<TravelDiary> page(String destination, String keyword, String sort, int page, int pageSize) {
+        int safePage = Math.max(1, page);
+        int safePageSize = Math.max(1, Math.min(pageSize <= 0 ? 20 : pageSize, 100));
+        SqlWhere where = SqlWhere.filter(destination, keyword);
+
+        Long total = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM travel_diary " + where.clause(),
+                Long.class,
+                where.args().toArray()
+        );
+        long totalCount = total == null ? 0 : total;
+
+        List<Object> args = new ArrayList<>(where.args());
+        args.add(safePageSize);
+        args.add((safePage - 1) * safePageSize);
+        List<TravelDiary> items = jdbcTemplate.query(
+                "SELECT " + COLUMNS + " FROM travel_diary " + where.clause() + orderBy(sort) + " LIMIT ? OFFSET ?",
+                this::mapDiary,
+                args.toArray()
+        );
+        return PageResult.of(items, totalCount, safePage, safePageSize);
     }
 
     public TravelDiary findById(long id) {
@@ -107,15 +122,39 @@ public class DiaryRepository {
         return id == null ? 0 : id;
     }
 
+    /**
+     * 浏览量 +1 的兜底直写（热点行场景下由 Redis 缓冲 + 批量落库取代，见 ViewCountService）。
+     */
     public void increaseView(long id) {
         jdbcTemplate.update("UPDATE travel_diary SET view_count = view_count + 1 WHERE id = ?", id);
     }
 
-    public void rate(long id, double newRating) {
-        TravelDiary diary = findById(id);
-        int nextCount = diary.ratingCount() + 1;
-        double nextRating = ((diary.rating() * diary.ratingCount()) + newRating) / Math.max(1, nextCount);
-        jdbcTemplate.update("UPDATE travel_diary SET rating = ?, rating_count = ? WHERE id = ?", round(nextRating), nextCount, id);
+    /**
+     * 定时任务批量回写浏览量增量。
+     */
+    public int addViewDelta(long id, long delta) {
+        if (delta <= 0) {
+            return 0;
+        }
+        return jdbcTemplate.update(
+                "UPDATE travel_diary SET view_count = view_count + ? WHERE id = ?",
+                (int) Math.min(Integer.MAX_VALUE, delta), id);
+    }
+
+    /**
+     * 原子评分更新（修复原先“读-改-写”在并发下的丢更新问题）。
+     * <p>关键：MySQL 的 SET 子句从左到右求值，rating 必须写在 rating_count 之前，
+     * 否则新评分会用到已自增的 count。整条语句在 InnoDB 行锁内完成，等价于一次 CAS。
+     *
+     * @return 受影响行数，0 表示日记不存在
+     */
+    public int rate(long id, double newRating) {
+        return jdbcTemplate.update("""
+                UPDATE travel_diary
+                SET rating = ROUND((rating * rating_count + ?) / (rating_count + 1), 2),
+                    rating_count = rating_count + 1
+                WHERE id = ?
+                """, newRating, id);
     }
 
     public DiaryStats stats() {
@@ -141,6 +180,32 @@ public class DiaryRepository {
             case "new" -> " ORDER BY create_time DESC, id DESC";
             default -> " ORDER BY view_count DESC, rating DESC, id DESC";
         };
+    }
+
+    private int safeLimit(int limit) {
+        return Math.max(1, Math.min(limit <= 0 ? 20 : limit, 100));
+    }
+
+    /**
+     * 日记列表的公共过滤条件（list / page / count 复用，保证三处语义一致）。
+     */
+    private record SqlWhere(String clause, List<Object> args) {
+        private static SqlWhere filter(String destination, String keyword) {
+            StringBuilder clause = new StringBuilder("WHERE 1 = 1");
+            List<Object> args = new ArrayList<>();
+            if (destination != null && !destination.isBlank()) {
+                clause.append(" AND destination LIKE ?");
+                args.add("%" + destination.trim() + "%");
+            }
+            if (keyword != null && !keyword.isBlank()) {
+                clause.append(" AND (title LIKE ? OR content LIKE ? OR interest_tags LIKE ?)");
+                String like = "%" + keyword.trim() + "%";
+                args.add(like);
+                args.add(like);
+                args.add(like);
+            }
+            return new SqlWhere(clause.toString(), args);
+        }
     }
 
     private TravelDiary mapDiary(ResultSet rs, int rowNum) throws SQLException {
